@@ -863,7 +863,7 @@ func (broadcaster *BuilderBroadcastRPC) broadcastRequest(method string, privKey 
 			responseCh <- body
 
 			if broadcaster.Debug {
-				broadcaster.log.Println(fmt.Sprintf("%s\nRequest: %s\nSignature: %s\nResponse: %s\n", method, body, signature, string(body)))
+				broadcaster.log.Println(fmt.Sprintf("%s\nUrl: %s\nRequest: %s\nSignature: %s\nResponse: %s\n", method, url, body, signature, string(body)))
 			}
 
 		}(url)
