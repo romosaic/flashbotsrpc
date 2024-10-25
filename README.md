@@ -1,6 +1,6 @@
 # Flashbots RPC client
 
-[![Test status](https://github.com/metachris/flashbotsrpc/workflows/Test/badge.svg)](https://github.com/metachris/flashbotsrpc/actions?query=workflow%3A%22Test%22)
+[![Test status](https://github.com/romosaic/flashbotsrpc/workflows/Test/badge.svg)](https://github.com/romosaic/flashbotsrpc/actions?query=workflow%3A%22Test%22)
 
 Fork of [ethrpc](https://github.com/onrik/ethrpc) with additional [Flashbots RPC methods](https://docs.flashbots.net/flashbots-auction/searchers/advanced/rpc-endpoint):
 
@@ -15,7 +15,7 @@ Fork of [ethrpc](https://github.com/onrik/ethrpc) with additional [Flashbots RPC
 
 Add library to your project:
 
-`go get github.com/metachris/flashbotsrpc`
+`go get github.com/romosaic/flashbotsrpc`
 
 Create a new private key here for testing (you probably want to use an existing one):
 
@@ -90,4 +90,4 @@ for _, result := range results {
 
 #### More examples
 
-You can find example code in the [`/examples/` directory](https://github.com/metachris/flashbotsrpc/tree/master/examples).
+You can find example code in the [`/examples/` directory](https://github.com/romosaic/flashbotsrpc/tree/master/examples).
