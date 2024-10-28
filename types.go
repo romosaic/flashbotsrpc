@@ -420,7 +420,16 @@ type FlashbotsSendBundleResponse struct {
 	BundleHash string `json:"bundleHash"`
 }
 
+type RequestData struct {
+	Signature    string
+	Url          string
+	Method       string
+	RequestBody  []byte
+	ResponseData []byte
+}
+
 type BuilderBroadcastResponse struct {
+	RequestData    RequestData                 `json:"requestData"`
 	BundleResponse FlashbotsSendBundleResponse `json:"bundleResponse"`
 	Err            error                       `json:"err"`
 }

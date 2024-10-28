@@ -783,11 +783,24 @@ func (broadcaster *BuilderBroadcastRPC) BroadcastBundle(privKey *ecdsa.PrivateKe
 
 	for _, requestResponse := range requestResponses {
 		if requestResponse.Err != nil {
-			responses = append(responses, BuilderBroadcastResponse{Err: requestResponse.Err})
+			responses = append(
+				responses,
+				BuilderBroadcastResponse{
+					RequestData: requestResponse.RequestData,
+					Err:         requestResponse.Err,
+				},
+			)
 		} else {
 			fbResponse := FlashbotsSendBundleResponse{}
 			err := json.Unmarshal(requestResponse.Msg, &fbResponse)
-			responses = append(responses, BuilderBroadcastResponse{BundleResponse: fbResponse, Err: err})
+			responses = append(
+				responses,
+				BuilderBroadcastResponse{
+					RequestData:    requestResponse.RequestData,
+					BundleResponse: fbResponse,
+					Err:            err,
+				},
+			)
 		}
 	}
 
@@ -795,8 +808,9 @@ func (broadcaster *BuilderBroadcastRPC) BroadcastBundle(privKey *ecdsa.PrivateKe
 }
 
 type broadcastRequestResponse struct {
-	Msg json.RawMessage
-	Err error
+	RequestData RequestData
+	Msg         json.RawMessage
+	Err         error
 }
 
 func (broadcaster *BuilderBroadcastRPC) broadcastRequest(method string, privKey *ecdsa.PrivateKey, params ...interface{}) []broadcastRequestResponse {
@@ -823,7 +837,7 @@ func (broadcaster *BuilderBroadcastRPC) broadcastRequest(method string, privKey 
 	signature := crypto.PubkeyToAddress(privKey.PublicKey).Hex() + ":" + hexutil.Encode(sig)
 
 	var wg sync.WaitGroup
-	responseCh := make(chan []byte)
+	responseCh := make(chan RequestData)
 
 	// Iterate over the URLs and send requests concurrently
 	for _, url := range broadcaster.urls {
@@ -854,16 +868,22 @@ func (broadcaster *BuilderBroadcastRPC) broadcastRequest(method string, privKey 
 			}
 
 			// Read the response body
-			body, err := ioutil.ReadAll(response.Body)
+			respBody, err := ioutil.ReadAll(response.Body)
 			if err != nil {
 				return
 			}
 
 			// Send the response body through the channel
-			responseCh <- body
+			responseCh <- RequestData{
+				Signature:    signature,
+				Url:          url,
+				Method:       method,
+				RequestBody:  body,
+				ResponseData: respBody,
+			}
 
 			if broadcaster.Debug {
-				broadcaster.log.Println(fmt.Sprintf("%s\nUrl: %s\nRequest: %s\nSignature: %s\nResponse: %s\n", method, url, body, signature, string(body)))
+				broadcaster.log.Println(fmt.Sprintf("%s\nUrl: %s\nRequest: %s\nSignature: %s\nResponse: %s\n", method, url, body, signature, string(respBody)))
 			}
 
 		}(url)
@@ -875,38 +895,42 @@ func (broadcaster *BuilderBroadcastRPC) broadcastRequest(method string, privKey 
 	}()
 
 	responses := []broadcastRequestResponse{}
-	for data := range responseCh {
+	for requestData := range responseCh {
 		// On error, response looks like this instead of JSON-RPC: {"error":"block param must be a hex int"}
 		errorResp := new(RelayErrorResponse)
-		if err := json.Unmarshal(data, errorResp); err == nil && errorResp.Error != "" {
+		if err := json.Unmarshal(requestData.ResponseData, errorResp); err == nil && errorResp.Error != "" {
 			// relay returned an error
 			responses = append(responses, broadcastRequestResponse{
-				Msg: nil,
-				Err: fmt.Errorf("%w: %s", ErrRelayErrorResponse, errorResp.Error),
+				RequestData: requestData,
+				Msg:         nil,
+				Err:         fmt.Errorf("%w: %s", ErrRelayErrorResponse, errorResp.Error),
 			})
 			continue
 		}
 
 		resp := new(rpcResponse)
-		if err := json.Unmarshal(data, resp); err != nil {
+		if err := json.Unmarshal(requestData.ResponseData, resp); err != nil {
 			responses = append(responses, broadcastRequestResponse{
-				Msg: nil,
-				Err: err,
+				RequestData: requestData,
+				Msg:         nil,
+				Err:         err,
 			})
 			continue
 		}
 
 		if resp.Error != nil {
 			responses = append(responses, broadcastRequestResponse{
-				Msg: nil,
-				Err: fmt.Errorf("%w: %s", ErrRelayErrorResponse, (*resp).Error.Message),
+				RequestData: requestData,
+				Msg:         nil,
+				Err:         fmt.Errorf("%w: %s", ErrRelayErrorResponse, (*resp).Error.Message),
 			})
 			continue
 		}
 
 		responses = append(responses, broadcastRequestResponse{
-			Msg: resp.Result,
-			Err: nil,
+			RequestData: requestData,
+			Msg:         resp.Result,
+			Err:         nil,
 		})
 	}
 
